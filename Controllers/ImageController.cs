@@ -1,13 +1,16 @@
-﻿using Azure.Storage.Blobs.Models;
-using Azure.Storage.Blobs;
+﻿using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.CognitiveServices.Vision.ComputerVision;
 using Microsoft.Azure.CognitiveServices.Vision.ComputerVision.Models;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
+using ImageDescriptionApp.Models;
 
 namespace ImageDescriptionApp.Controllers
 {
@@ -18,6 +21,7 @@ namespace ImageDescriptionApp.Controllers
         private readonly string _storageConnectionString;
         private readonly string _containerName;
         private readonly IMemoryCache _cache;
+        private const string PastUploadsKey = "PastUploads";
 
         public ImageController(IConfiguration configuration, IMemoryCache cache)
         {
@@ -30,35 +34,65 @@ namespace ImageDescriptionApp.Controllers
 
         public IActionResult Index()
         {
+            var pastUploads = GetPastUploads();
+            ViewBag.PastUploads = pastUploads;
             return View();
         }
 
         [HttpPost]
-        public async Task<IActionResult> UploadImage(IFormFile file)
+        public async Task<IActionResult> Index(IFormFile file)
         {
             if (file == null || file.Length == 0)
             {
                 ViewBag.Message = "Please select an image file.";
+                ViewBag.PastUploads = GetPastUploads();
                 return View("Index");
             }
 
-            // Upload the image to Blob Storage
-            var imageUrl = await UploadImageToBlobStorage(file);
+            string uniqueId = Guid.NewGuid().ToString();
+            var imageUrl = await UploadImageToBlobStorage(file, uniqueId);
+            var analysisResult = await AnalyzeImageAndCache(imageUrl);
 
-            // Analyze the image using Computer Vision API
-            var description = await AnalyzeImage(imageUrl);
+            AddToPastUploads(uniqueId, imageUrl, file.FileName, analysisResult.Tags);
 
-            ViewBag.Description = description;
+            ViewBag.Description = analysisResult.Description;
             ViewBag.ImageUrl = imageUrl;
+            ViewBag.UniqueId = uniqueId;
+            ViewBag.Tags = analysisResult.Tags;
+            ViewBag.PastUploads = GetPastUploads();
+
             return View("Index");
         }
 
-        private async Task<string> UploadImageToBlobStorage(IFormFile file)
+        [HttpPost]
+        public async Task<IActionResult> AnalyzePastImage(string uniqueId)
+        {
+            var pastUploads = GetPastUploads();
+            var pastUpload = pastUploads.FirstOrDefault(p => p.UniqueId == uniqueId);
+
+            if (pastUpload == null)
+            {
+                ViewBag.Message = "Image not found.";
+                ViewBag.PastUploads = pastUploads;
+                return View("Index");
+            }
+
+            var analysisResult = await AnalyzeImageAndCache(pastUpload.ImageUrl);
+
+            ViewBag.Description = analysisResult.Description;
+            ViewBag.ImageUrl = pastUpload.ImageUrl;
+            ViewBag.UniqueId = uniqueId;
+            ViewBag.Tags = analysisResult.Tags;
+            ViewBag.PastUploads = pastUploads;
+
+            return View("Index");
+        }
+
+        private async Task<string> UploadImageToBlobStorage(IFormFile file, string uniqueId)
         {
             var blobServiceClient = new BlobServiceClient(_storageConnectionString);
             var blobContainerClient = blobServiceClient.GetBlobContainerClient(_containerName);
 
-            // Ensure the container exists
             await blobContainerClient.CreateIfNotExistsAsync(PublicAccessType.Blob);
 
             var blobClient = blobContainerClient.GetBlobClient(Guid.NewGuid().ToString() + Path.GetExtension(file.FileName));
@@ -71,41 +105,57 @@ namespace ImageDescriptionApp.Controllers
             return blobClient.Uri.ToString();
         }
 
-        private async Task<string> AnalyzeImage(string imageUrl)
+        private async Task<(string Description, List<string> Tags)> AnalyzeImageAndCache(string imageUrl)
         {
-            // Check if the description is in the cache
-            if (_cache.TryGetValue(imageUrl, out string description))
+            if (!_cache.TryGetValue(imageUrl, out (string Description, List<string> Tags) analysisResult))
             {
-                return description;
+                var computerVision = new ComputerVisionClient(new ApiKeyServiceClientCredentials(_key))
+                {
+                    Endpoint = _endpoint
+                };
+
+                var features = new List<VisualFeatureTypes?>
+                {
+                    VisualFeatureTypes.Description,
+                    VisualFeatureTypes.Tags
+                };
+
+                var result = await computerVision.AnalyzeImageAsync(imageUrl, features);
+
+                analysisResult = (
+                    Description: result.Description.Captions.FirstOrDefault()?.Text ?? "No description available.",
+                    Tags: result.Tags.Select(t => t.Name).ToList()
+                );
+
+                var cacheEntryOptions = new MemoryCacheEntryOptions()
+                    .SetSlidingExpiration(TimeSpan.FromDays(1))
+                    .SetAbsoluteExpiration(TimeSpan.FromDays(7));
+
+                _cache.Set(imageUrl, analysisResult, cacheEntryOptions);
             }
 
-            var computerVision = new ComputerVisionClient(new ApiKeyServiceClientCredentials(_key))
-            {
-                Endpoint = _endpoint
-            };
+            return analysisResult;
+        }
 
-            var result = await computerVision.DescribeImageAsync(imageUrl);
-
-            if (result.Captions.Count > 0)
+        private List<PastUpload> GetPastUploads()
+        {
+            if (!_cache.TryGetValue(PastUploadsKey, out List<PastUpload> pastUploads))
             {
-                description = result.Captions[0].Text;
+                pastUploads = new List<PastUpload>();
+                _cache.Set(PastUploadsKey, pastUploads, new MemoryCacheEntryOptions().SetSlidingExpiration(TimeSpan.FromDays(30)));
             }
-            else
+            return pastUploads;
+        }
+
+        private void AddToPastUploads(string uniqueId, string imageUrl, string fileName, List<string> tags)
+        {
+            var pastUploads = GetPastUploads();
+            pastUploads.Insert(0, new PastUpload { UniqueId = uniqueId, ImageUrl = imageUrl, FileName = fileName, Tags = tags });
+            if (pastUploads.Count > 10) // Keep only the last 10 uploads
             {
-                description = "No description available.";
+                pastUploads.RemoveAt(pastUploads.Count - 1);
             }
-
-            // Set cache options
-            var cacheOptions = new MemoryCacheEntryOptions
-            {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30), // Cache for 30 minutes
-                SlidingExpiration = TimeSpan.FromMinutes(10)
-            };
-
-            // Save the description in the cache
-            _cache.Set(imageUrl, description, cacheOptions);
-
-            return description;
+            _cache.Set(PastUploadsKey, pastUploads, new MemoryCacheEntryOptions().SetSlidingExpiration(TimeSpan.FromDays(30)));
         }
     }
 }
