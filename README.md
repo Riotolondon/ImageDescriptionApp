@@ -20,7 +20,6 @@ In this assignment, you will use the Computer Vision AI API to develop
 an application that allows the user to upload a photo and then describe 
 what is in that photo in text on the screen
 
-Certainly! Here's a revised README for GitHub that focuses on the actual features present in your application:
 
 # Image Analysis Web Application
 
