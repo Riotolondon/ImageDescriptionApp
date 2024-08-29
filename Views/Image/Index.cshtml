@@ -1,418 +1,160 @@
 ﻿@{
-    ViewData["Title"] = "Image Upload and Analysis";
+    ViewData["Title"] = "What's The Image?";
 }
+<link rel="stylesheet" href="~/css/style.css">
 
-<style>
-    body {
-        font-family: Arial, sans-serif;
-        line-height: 1.6;
-        color: #333;
-        background-color: #f4f4f4;
-        margin: 0;
-        padding: 20px;
-    }
-    .page-container {
-        display: flex;
-        gap: 20px;
-        max-width: 1200px;
-        margin: 0 auto;
-    }
-    .main-content {
-        flex: 1;
-        background-color: #fff;
-        border-radius: 8px;
-        padding: 20px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .side-card {
-        width: 300px;
-        background-color: #fff;
-        border-radius: 8px;
-        padding: 20px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    h2 {
-        font-size: 1.5rem;
-        margin-bottom: 20px;
-        color: #333;
-    }
-    .upload-area {
-        border: 2px dashed #ccc;
-        border-radius: 8px;
-        padding: 20px;
-        text-align: center;
-        cursor: pointer;
-        margin-bottom: 20px;
-        transition: background-color 0.3s ease;
-    }
-    .upload-area:hover, .upload-area.dragover {
-        background-color: #f0f0f0;
-    }
-    .preview-area {
-        display: none;
-        position: relative;
-        margin-bottom: 20px;
-    }
-    .preview-area img {
-        max-width: 100%;
-        max-height: 300px;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .remove-btn {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        background-color: #fff;
-        border: none;
-        border-radius: 50%;
-        width: 30px;
-        height: 30px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        transition: background-color 0.3s ease;
-    }
-    .remove-btn:hover {
-        background-color: #f0f0f0;
-    }
-    .upload-btn {
-        background-color: #0077ff;
-        color: #fff;
-        border: none;
-        padding: 10px 20px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 1rem;
-        display: inline-flex;
-        align-items: center;
-        transition: background-color 0.3s ease;
-    }
-    .upload-btn:hover {
-        background-color: #0066dd;
-    }
-    .upload-btn svg {
-        margin-right: 8px;
-    }
-    .result-area {
-        background-color: #f9f9f9;
-        border-radius: 8px;
-        padding: 15px;
-        margin-top: 20px;
-    }
-    .result-area img {
-        max-width: 100%;
-        border-radius: 8px;
-        margin-top: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .message {
-        padding: 10px;
-        margin-bottom: 10px;
-        border-radius: 4px;
-        background-color: #f8d7da;
-        color: #721c24;
-        border: 1px solid #f5c6cb;
-    }
-    .past-uploads {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-    .past-upload {
-        display: flex;
-        align-items: center;
-        padding: 10px;
-        border-radius: 4px;
-        background-color: #f9f9f9;
-        cursor: pointer;
-        transition: background-color 0.3s ease;
-    }
-    .past-upload:hover {
-        background-color: #f0f0f0;
-    }
-    .past-upload img {
-        width: 40px;
-        height: 40px;
-        object-fit: cover;
-        border-radius: 4px;
-        margin-right: 10px;
-    }
-    .past-upload p {
-        margin: 0;
-        font-size: 0.9rem;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-    .tags {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 5px;
-        margin-top: 10px;
-    }
-    .tag {
-        background-color: #e0e0e0;
-        color: #333;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 0.8rem;
-        cursor: pointer;
-        transition: background-color 0.3s ease;
-    }
-    .tag:hover, .tag.active {
-        background-color: #0077ff;
-        color: #fff;
-    }
-</style>
+<header>
+    What's The Image?
+</header>
 
-<div class="page-container">
-    <div class="main-content">
-        <h2>Image Upload and Analysis</h2>
-        
-        @if (!string.IsNullOrEmpty(ViewBag.Message))
+<div class="chat-container">
+    <div class="chat-window">
+        <!-- Uploaded Image as a Sent Message -->
+        @if (ViewBag.ImageUrl != null)
         {
-            <div class="message">@ViewBag.Message</div>
+            <div class="chat-message sent">
+                <img src="@ViewBag.ImageUrl" alt="Uploaded Image" class="chat-image">
+            </div>
         }
 
-        <form asp-action="Index" asp-controller="Image" enctype="multipart/form-data" method="post" id="uploadForm">
-            <div id="uploadArea" class="upload-area">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="17 8 12 3 7 8"></polyline>
-                    <line x1="12" y1="3" x2="12" y2="15"></line>
-                </svg>
-                <p>Click to upload or drag and drop an image</p>
-            </div>
-            <input type="file" id="fileInput" name="file" style="display: none;" accept="image/*">
-            <div id="previewArea" class="preview-area">
-                <img id="imagePreview" src="" alt="Preview">
-                <button type="button" id="removeBtn" class="remove-btn">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                </button>
-            </div>
-            <button type="submit" id="uploadBtn" class="upload-btn" style="display: none;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="22" y1="2" x2="11" y2="13"></line>
-                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                </svg>
-                Upload and Analyze
-            </button>
-        </form>
-
-        <div id="resultArea" class="result-area" style="display: none;">
-            <h3>Description</h3>
-            <p id="description"></p>
-            <h3>Tags</h3>
-            <div id="tagArea" class="tags"></div>
-            <h3>Uploaded Image</h3>
-            <img id="uploadedImage" src="" alt="Uploaded Image" />
-        </div>
-    </div>
-
-    <div class="side-card">
-        <h2>Past Uploads</h2>
-        <div id="tagFilter" class="tags">
-            <!-- Tag filters will be added here dynamically -->
-        </div>
-        <div class="past-uploads">
-            @if (ViewBag.PastUploads != null && ((List<PastUpload>)ViewBag.PastUploads).Any())
-            {
-                @foreach (var pastUpload in (List<PastUpload>)ViewBag.PastUploads)
-                {
-                    <div class="past-upload" data-unique-id="@pastUpload.UniqueId" data-image-url="@pastUpload.ImageUrl" data-tags="@string.Join(",", pastUpload.Tags)">
-                        <img src="@pastUpload.ImageUrl" alt="@pastUpload.FileName">
-                        <div>
-                            <p>@pastUpload.FileName</p>
-                            <div class="tags">
-                                @foreach (var tag in pastUpload.Tags.Take(3))
-                                {
-                                    <span class="tag">@tag</span>
-                                }
-                            </div>
-                        </div>
+        <!-- Detailed Response as a Received Message -->
+        @if (ViewBag.Description != null || ViewBag.Tags != null)
+        {
+            <div class="chat-message received">
+                <div class="message-content">
+                    <p><strong>Description:</strong> @Html.Raw(Json.Serialize(ViewBag.Description))</p>
+                    <p><strong>Tags:</strong></p>
+                    <div class="tags">
+                        @foreach (var tag in (List<string>)ViewBag.Tags)
+                        {
+                            <span class="tag">@tag</span>
+                        }
                     </div>
-                }
-            }
-            else
-            {
-                <p>No past uploads yet.</p>
-            }
-        </div>
+                </div>
+            </div>
+        }
     </div>
+
+    <!-- Video and Capture Button -->
+    <div id="cameraContainer" style="display:none;">
+        <video id="video" width="320" height="240" autoplay></video>
+        <button id="captureBtn" class="upload-btn">Capture Photo</button>
+    </div>
+
+    <!-- Upload Form -->
+    <form asp-action="Index" asp-controller="Image" enctype="multipart/form-data" method="post" id="uploadForm">
+        <div id="uploadArea" class="upload-area">
+            Select Image
+        </div>
+        <input type="file" id="fileInput" name="file" accept="image/*" style="display:none;">
+        <img id="imagePreview" src="#" alt="Image Preview" style="display:none; max-width: 100%; margin-top: 10px;">
+        <svg id="cameraIcon" class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h3l2-2h8l2 2h3v11H3V7z" />
+            <circle cx="12" cy="13" r="4" />
+        </svg>
+        <button type="submit" id="uploadBtn" class="upload-btn" style="display:none;">Upload</button>
+    </form>
 </div>
 
 <script>
+
     const uploadArea = document.getElementById('uploadArea');
     const fileInput = document.getElementById('fileInput');
-    const previewArea = document.getElementById('previewArea');
     const imagePreview = document.getElementById('imagePreview');
-    const removeBtn = document.getElementById('removeBtn');
     const uploadBtn = document.getElementById('uploadBtn');
-    const uploadForm = document.getElementById('uploadForm');
-    const resultArea = document.getElementById('resultArea');
-    const description = document.getElementById('description');
-    const tagArea = document.getElementById('tagArea');
-    const uploadedImage = document.getElementById('uploadedImage');
-    const tagFilter = document.getElementById('tagFilter');
-    const pastUploads = document.querySelectorAll('.past-upload');
-    let activeTags = new Set();
+    const cameraIcon = document.getElementById('cameraIcon');
+    const cameraContainer = document.getElementById('cameraContainer');
+    const video = document.getElementById('video');
+    const captureBtn = document.getElementById('captureBtn');
+    let stream;
 
-    function showResults() {
-        if ('@ViewBag.Description' && '@ViewBag.ImageUrl') {
-            resultArea.style.display = 'block';
-            description.textContent = '@Html.Raw(Json.Serialize(ViewBag.Description))';
-            uploadedImage.src = '@ViewBag.ImageUrl';
-            
-            // Display tags
-            const tags = @Html.Raw(Json.Serialize(ViewBag.Tags));
-            tagArea.innerHTML = tags.map(tag => `<span class="tag">${tag}</span>`).join('');
-        }
-    }
-
-    function clearResults() {
-        resultArea.style.display = 'none';
-        description.textContent = '';
-        tagArea.innerHTML = '';
-        uploadedImage.src = '';
-    }
-
-    if (performance.navigation.type === performance.navigation.TYPE_RELOAD) {
-        clearResults();
-    } else {
-        showResults();
-    }
-
+    // Open file picker when upload area is clicked
     uploadArea.addEventListener('click', () => fileInput.click());
-    uploadArea.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        uploadArea.classList.add('dragover');
-    });
-    uploadArea.addEventListener('dragleave', () => {
-        uploadArea.classList.remove('dragover');
-    });
-    uploadArea.addEventListener('drop', (e) => {
-        e.preventDefault();
-        uploadArea.classList.remove('dragover');
-        handleFiles(e.dataTransfer.files);
-    });
 
-    fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
-    removeBtn.addEventListener('click', resetUpload);
+    // Display selected file name, show upload button, and display image preview
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            const reader = new FileReader();
 
-    function handleFiles(files) {
-        if (files.length > 0) {
-            const file = files[0];
-            if (file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    imagePreview.src = e.target.result;
-                    previewArea.style.display = 'block';
-                    uploadBtn.style.display = 'inline-flex';
-                    uploadArea.style.display = 'none';
-                };
-                reader.readAsDataURL(file);
-            } else {
-                alert('Please upload an image file.');
+            reader.onload = function (e) {
+                imagePreview.src = e.target.result;
+                imagePreview.style.display = 'block'; // Ensure the image preview is displayed
             }
+
+            reader.readAsDataURL(file);
+
+            uploadBtn.style.display = 'block';
+            uploadArea.textContent = file.name;
         }
-    }
-
-    function resetUpload() {
-        fileInput.value = '';
-        imagePreview.src = '';
-        previewArea.style.display = 'none';
-        uploadBtn.style.display = 'none';
-        uploadArea.style.display = 'block';
-    }
-
-    uploadForm.addEventListener('submit', (e) => {
-        uploadBtn.disabled = true;
-        uploadBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg> Uploading and Analyzing...';
     });
 
-    pastUploads.forEach(pastUpload => {
-        pastUpload.addEventListener('click', function() {
-            const uniqueId = this.getAttribute('data-unique-id');
-            const imageUrl = this.getAttribute('data-image-url');
-            analyzePastImage(uniqueId, imageUrl);
-        });
+    // Disable the upload button after form submission
+    uploadForm.addEventListener('submit', () => {
+        uploadBtn.disabled = true;
+        uploadBtn.textContent = 'Uploading...';
     });
 
-    function analyzePastImage(uniqueId, imageUrl) {
-        clearResults();
-        uploadBtn.disabled = true;
-        uploadBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg> Analyzing...';
+    // Request camera access and show the video stream
+    cameraIcon.addEventListener('click', async () => {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+            cameraContainer.style.display = 'block';
+            uploadForm.style.display = 'none';  // Hide the upload form while taking a picture
+        } catch (err) {
+            console.error('Error accessing the camera: ', err);
+        }
+    });
 
-        fetch('/Image/AnalyzePastImage', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: 'uniqueId=' + encodeURIComponent(uniqueId)
-        })
-            .then(response => response.text())
-            .then(html => {
-                document.body.innerHTML = html;
-                showResults();
-                uploadBtn.disabled = false;
-                uploadBtn.innerHTML = 'Upload and Analyze';
-                updateTagFilter();
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                uploadBtn.disabled = false;
-                uploadBtn.innerHTML = 'Upload and Analyze';
-            });
-    }
+    // Capture photo when capture button is clicked
+    captureBtn.addEventListener('click', capturePhoto);
 
-    function updateTagFilter() {
-        const allTags = new Set();
-        pastUploads.forEach(upload => {
-            const tags = upload.getAttribute('data-tags').split(',');
-            tags.forEach(tag => allTags.add(tag));
-        });
+    // Capture photo when Enter or Spacebar is pressed
+    document.addEventListener('keydown', (event) => {
+        if (cameraContainer.style.display === 'block' && (event.key === 'Enter' || event.key === ' ')) {
+            event.preventDefault(); // Prevent default action for the keys
+            capturePhoto(); // Capture the photo
+        }
+    });
 
-        tagFilter.innerHTML = Array.from(allTags).map(tag =>
-            `<span class="tag ${activeTags.has(tag) ? 'active' : ''}" data-tag="${tag}">${tag}</span>`
-        ).join('');
+    function capturePhoto() {
+        // Create a canvas element to capture the image from the video
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const context = canvas.getContext('2d');
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        tagFilter.addEventListener('click', (e) => {
-            if (e.target.classList.contains('tag')) {
-                const tag = e.target.getAttribute('data-tag');
-                if (activeTags.has(tag)) {
-                    activeTags.delete(tag);
-                    e.target.classList.remove('active');
-                } else {
-                    activeTags.add(tag);
-                    e.target.classList.add('active');
-                }
-                filterPastUploads();
+        // Convert the canvas image to a blob and set it as the value of the file input
+        canvas.toBlob(blob => {
+            const file = new File([blob], 'camera_photo.png', { type: 'image/png' });
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            fileInput.files = dataTransfer.files;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                imagePreview.src = e.target.result;
+                imagePreview.style.display = 'block';
             }
+
+            reader.readAsDataURL(file);
+
+            uploadBtn.style.display = 'block';
+            uploadArea.textContent = 'camera_photo.png';
+
+            // Stop the camera stream and hide the camera container
+            stopCameraStream();
+            uploadForm.style.display = 'flex';  // Show the upload form again
         });
     }
 
-    function filterPastUploads() {
-        pastUploads.forEach(upload => {
-            const tags = upload.getAttribute('data-tags').split(',');
-            if (activeTags.size === 0 || tags.some(tag => activeTags.has(tag))) {
-                upload.style.display = '';
-            } else {
-                upload.style.display = 'none';
-            }
-        });
+    function stopCameraStream() {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+        }
+        cameraContainer.style.display = 'none';
     }
 
-    updateTagFilter();
-
-    // Check if this is a post-back or initial page load
-    if (performance.navigation.type !== performance.navigation.TYPE_RELOAD) {
-        // Initial page load or form submission, show results if available
-        showResults();
-    }
 </script>
